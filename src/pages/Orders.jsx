@@ -3,25 +3,37 @@ import { ShoppingCart, Plus, Check, X, Loader2, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
-import { orderService, productService } from '../services/api';
+import { orderService, productService, storeService, userService } from '../services/api';
 
 const OrderWizard = ({ isOpen, onClose, onOrderCreated }) => {
     const [products, setProducts] = useState([]);
+    const [stores, setStores] = useState([]);
+    const [users, setUsers] = useState([]);
     const [cart, setCart] = useState({}); // { productId: quantity }
+    const [selectedStore, setSelectedStore] = useState('');
+    const [selectedUser, setSelectedUser] = useState('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            loadProducts();
+            loadData();
             setCart({});
+            setSelectedStore('');
+            setSelectedUser('');
         }
     }, [isOpen]);
 
-    const loadProducts = async () => {
+    const loadData = async () => {
         try {
-            const data = await productService.getAll();
-            setProducts(data);
+            const [productsData, storesData, usersData] = await Promise.all([
+                productService.getAll(),
+                storeService.getAll(),
+                userService.getAll()
+            ]);
+            setProducts(productsData);
+            setStores(storesData);
+            setUsers(usersData);
         } catch (e) {
             console.error(e);
         } finally {
@@ -56,7 +68,17 @@ const OrderWizard = ({ isOpen, onClose, onOrderCreated }) => {
         }));
 
         try {
-            await orderService.create({ items });
+            if (!selectedStore || !selectedUser) {
+                alert('Please select a Store and User');
+                setSubmitting(false);
+                return;
+            }
+
+            await orderService.create({
+                items,
+                store_id: parseInt(selectedStore),
+                user_id: parseInt(selectedUser)
+            });
             onOrderCreated();
             onClose();
         } catch (error) {
@@ -72,7 +94,43 @@ const OrderWizard = ({ isOpen, onClose, onOrderCreated }) => {
             <div className="flex flex-col md:flex-row gap-6 h-[600px]">
                 {/* Product Selection */}
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar border-r border-slate-700/50">
-                    <h3 className="font-semibold text-white mb-4 sticky top-0 bg-surface py-2 z-10">Select Products</h3>
+                    <div className="sticky top-0 bg-surface z-10 space-y-4 pb-4 mb-4 border-b border-slate-700/50">
+                        <h3 className="font-semibold text-white">Order Details</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Store</label>
+                                <select
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white text-sm"
+                                    value={selectedStore}
+                                    onChange={(e) => setSelectedStore(e.target.value)}
+                                >
+                                    <option value="">Select Store</option>
+                                    {stores.map(s => (
+                                        <option key={s.store_id || s.id} value={s.store_id || s.id}>
+                                            {s.store_location}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">User</label>
+                                <select
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white text-sm"
+                                    value={selectedUser}
+                                    onChange={(e) => setSelectedUser(e.target.value)}
+                                >
+                                    <option value="">Select User</option>
+                                    {users.map(u => (
+                                        <option key={u.user_id || u.id} value={u.user_id || u.id}>
+                                            {u.username || u.name || `User ${u.id}`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 className="font-semibold text-white mb-4">Select Products</h3>
                     {loading ? <Loader2 className="animate-spin" /> : (
                         <div className="space-y-3">
                             {products.map(product => (
@@ -199,8 +257,8 @@ const Orders = () => {
                                 <td className="p-4 text-white font-medium">#{order.id}</td>
                                 <td className="p-4">
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium border ${order.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                            order.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                                'bg-slate-500/10 text-slate-400 border-slate-400/20'
+                                        order.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                            'bg-slate-500/10 text-slate-400 border-slate-400/20'
                                         }`}>
                                         {order.status}
                                     </span>

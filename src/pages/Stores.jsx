@@ -11,7 +11,7 @@ const Stores = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStore, setEditingStore] = useState(null);
-    const [formData, setFormData] = useState({ store_location: '' });
+    const [formData, setFormData] = useState({ store_id: '', store_location: '' });
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -63,13 +63,15 @@ const Stores = () => {
 
     const openEditModal = (store) => {
         setEditingStore(store);
-        setFormData({ store_location: store.store_location });
+        setEditingStore(store);
+        setFormData({ store_id: store.store_id, store_location: store.store_location });
         setIsModalOpen(true);
     };
 
     const resetForm = () => {
         setEditingStore(null);
-        setFormData({ store_location: '' });
+        setEditingStore(null);
+        setFormData({ store_id: '', store_location: '' });
     };
 
     const handleCloseModal = () => {
@@ -158,6 +160,16 @@ const Stores = () => {
                 title={editingStore ? 'Edit Store' : 'Add New Store'}
             >
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <Input
+                        label="Store ID"
+                        type="number"
+                        value={formData.store_id}
+                        onChange={(e) => setFormData({ ...formData, store_id: e.target.value })}
+                        placeholder="e.g. 101"
+                        required
+                        disabled={!!editingStore} // Disable ID editing when updating
+                        autoFocus
+                    />
                     <Input
                         label="Store Location"
                         value={formData.store_location}
